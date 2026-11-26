@@ -257,7 +257,10 @@ function complete() {
   if (!settings.auto) flashHint(`${NAMES[ended]} complete — ready for ${NAMES[next].toLowerCase()}`);
 }
 function skip() {
-  setPhase(nextAfter(st.phase), false); // skipping a focus window doesn't count it
+  // Next walks the normal progression (focus, short, focus, ... long after N focus windows),
+  // so a skipped focus window advances the cycle just like a finished one.
+  if (st.phase === 'focus') st.done++;
+  setPhase(nextAfter(st.phase), false);
 }
 
 /* ---------- Render ---------- */
