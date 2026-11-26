@@ -300,9 +300,25 @@ function complete() {
   const ended = st.phase;
   if (ended === 'focus') st.done++;
   playSound(settings.sound[ended]);
+  if (ended === 'long') { // hold the finished cycle on screen for a moment before starting the next
+    st.endAt = null; st.remaining = 0; saveState(); releaseLock(); render();
+    holdTimer = setTimeout(settle, HOLD_MS);
+    return;
+  }
+  advance(ended);
+}
+function advance(ended) {
   const next = nextAfter(ended);
   setPhase(next, settings.auto);
   if (!settings.auto) flashHint(`${NAMES[ended]} complete — ready for ${NAMES[next].toLowerCase()}`);
+}
+// "Holding" = a long break just finished and its full ring and timeline are still on screen.
+const HOLD_MS = 2200;
+let holdTimer = null;
+const holding = () => st.phase === 'long' && st.remaining === 0 && st.endAt === null;
+function settle() { // end the hold now (timer fired, or the user touched something)
+  clearTimeout(holdTimer); holdTimer = null;
+  if (holding()) advance('long');
 }
 function skip() {
   // Next walks the normal progression (focus, short, focus, ... long after N focus windows),
@@ -339,7 +355,7 @@ function renderCycle() {
   const n = settings.cycles, d = Math.min(st.done, n);
   const cur = st.phase === 'focus' ? 2 * Math.min(d, n - 1) : st.phase === 'long' ? 2 * n - 1 : 2 * Math.max(1, d) - 1;
   const session = Math.floor(cur / 2) + 1;
-  const sub = st.phase === 'focus' ? `Session ${session} of ${n}` : `After session ${st.phase === 'long' ? n : Math.max(1, d)}`;
+  const sub = holding() ? 'Cycle complete' : st.phase === 'focus' ? `Session ${session} of ${n}` : `After session ${st.phase === 'long' ? n : Math.max(1, d)}`;
   if ($('sub').textContent !== sub) $('sub').textContent = sub;
   const key = `${n}:${cur}:${settings.focus}:${settings.short}:${settings.long}`;
   if (key !== cycleKey) {
@@ -490,10 +506,10 @@ $('openSettings').onclick = () => openSheet(true);
 $('closeSettings').onclick = $('scrim').onclick = () => openSheet(false);
 
 /* ---------- Controls ---------- */
-$('play').onclick = () => running() ? pause() : start();
-$('reset').onclick = () => { st.remaining = dur(st.phase); st.endAt = null; releaseLock(); saveState(); render(); };
-$('skip').onclick = skip;
-$('tabs').onclick = e => { const b = e.target.closest('button'); if (b && b.dataset.phase !== st.phase) setPhase(b.dataset.phase, false); };
+$('play').onclick = () => { settle(); running() ? pause() : start(); };
+$('reset').onclick = () => { if (holding()) return settle(); st.remaining = dur(st.phase); st.endAt = null; releaseLock(); saveState(); render(); };
+$('skip').onclick = () => holding() ? settle() : skip();
+$('tabs').onclick = e => { settle(); const b = e.target.closest('button'); if (b && b.dataset.phase !== st.phase) setPhase(b.dataset.phase, false); };
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && !document.body.classList.contains('open') && !/SELECT|INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); $('play').click(); }
   if (e.key === 'Escape') openSheet(false);
@@ -501,6 +517,7 @@ document.addEventListener('keydown', e => {
 
 /* ---------- Boot ---------- */
 applyAppearance();
+if (holding()) advance('long'); // reloaded mid-hold: just move on
 if (running()) { acquireLock(); }
 tick();
 if (wasExpired) flashHint(`${NAMES[st.phase]} timer ended while you were away`);
