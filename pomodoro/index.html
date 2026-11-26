@@ -352,7 +352,7 @@ function skip() {
   // so a skipped focus window advances the cycle just like a finished one.
   const from = st.phase, next = nextAfter(from === 'focus' ? (st.done++, 'focus') : from);
   if (from === 'long') st.done = 0;
-  setPhase(next, false);
+  setPhase(next, settings.auto); // auto-start applies to skipping as well as finishing
 }
 
 /* ---------- Render ---------- */
