@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2f66e0">
+<meta name="theme-color" content="#f3f6fb">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pomodoro">
@@ -22,6 +22,8 @@
 [data-scheme="dark"][data-palette="forest"],[data-scheme="dark"] [data-palette="forest"]{ --bg:#0e1511; --card:#17201a; --text:#e6efe8; --muted:#86998b; --track:#25322a; --line:#1f2b23; --focus:#3f9a64; --short:#3aa39c; --long:#c8934a; }
 [data-scheme="dark"][data-palette="tomato"],[data-scheme="dark"] [data-palette="tomato"]{ --bg:#141112; --card:#1f1b1c; --text:#f3ecea; --muted:#9a8f8b; --track:#2d2728; --line:#2a2425; --focus:#f0654f; --short:#36a173; --long:#5b8bde; }
 [data-scheme="dark"]{color-scheme:dark}
+/* Fallback for the instant before (or without) the script below: follow the OS in the default palette */
+@media (prefers-color-scheme:dark){:root:not([data-scheme]){ color-scheme:dark; --bg:#0f141b; --card:#18202a; --text:#e8eef6; --muted:#8797ac; --track:#263140; --line:#212b38; --focus:#4f80f0; --short:#25a58d; --long:#8573e0; }}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
 body{
@@ -40,7 +42,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 header{display:flex;align-items:center;justify-content:space-between;padding:12px max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
 .tabs{display:flex;background:var(--card);border-radius:999px;padding:4px;gap:2px;box-shadow:0 1px 0 var(--line)}
 .tabs button{padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
-.tabs button[aria-selected=true]{background:var(--accent);color:#fff}
+.tabs button[aria-selected=true],.tabs button[aria-checked=true]{background:var(--accent);color:#fff}
 .icon-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
 .icon-btn:active{background:var(--track)}
 .icon-btn svg{width:24px;height:24px}
@@ -118,6 +120,17 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 </style>
 </head>
 <body data-phase="focus">
+<script>
+/* Runs before first paint so dark-mode users never see a flash of the light theme. */
+(function(){try{
+  var s=JSON.parse(localStorage.getItem('pomo.settings'))||{},r=document.documentElement,h=r.getAttribute('data-theme');
+  var BG={calm:['#f3f6fb','#0f141b'],forest:['#f4f6f1','#0e1511'],tomato:['#fbf6f2','#141112']};
+  var m=s.mode==='light'||s.mode==='dark'?s.mode:'auto',p=BG[s.palette]?s.palette:'calm';
+  var d=m==='dark'||(m==='auto'&&(h?h==='dark':matchMedia('(prefers-color-scheme: dark)').matches));
+  r.dataset.scheme=d?'dark':'light';r.dataset.palette=p;
+  var t=document.querySelector('meta[name=theme-color]');if(t)t.content=BG[p][d?1:0];
+}catch(e){}})();
+</script>
 <header>
   <div class="tabs" role="tablist" aria-label="Timer mode" id="tabs">
     <button role="tab" data-phase="focus">Focus</button>
@@ -182,7 +195,7 @@ input[type=range]{width:150px;accent-color:var(--accent)}
   <div class="group">
     <div class="row"><span class="name">Auto-start next window<small>Otherwise wait for you to press play</small></span><label class="switch"><input type="checkbox" id="auto"></label></div>
   </div>
-  <button class="reset-defaults" id="defaults">Restore defaults</button>
+  <button class="reset-defaults" id="defaults">Reset timer &amp; sound settings</button>
 </section>
 
 <script>
@@ -234,7 +247,6 @@ function applyAppearance() {
   const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim();
   const meta = document.querySelector('meta[name=theme-color]'); if (meta && bg) meta.content = bg;
   document.querySelectorAll('#modeTabs button').forEach(b => b.setAttribute('aria-checked', b.dataset.mode === settings.mode));
-  document.querySelectorAll('#modeTabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === settings.mode));
   document.querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-checked', b.dataset.palette === settings.palette));
 }
 darkQuery.addEventListener('change', applyAppearance);
@@ -434,12 +446,13 @@ let confirmTimer;
 $('defaults').onclick = () => {
   const btn = $('defaults');
   if (!btn.dataset.armed) { // two taps to confirm (confirm() is blocked in some viewers)
-    btn.dataset.armed = '1'; btn.textContent = 'Tap again to restore defaults';
-    confirmTimer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Restore defaults'; }, 4000);
+    btn.dataset.armed = '1'; btn.textContent = 'Tap again to reset';
+    confirmTimer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Reset timer & sound settings'; }, 4000);
     return;
   }
-  clearTimeout(confirmTimer); delete btn.dataset.armed; btn.textContent = 'Restore defaults';
-  settings = clone(DEFAULTS); saveSettings();
+  clearTimeout(confirmTimer); delete btn.dataset.armed; btn.textContent = 'Reset timer & sound settings';
+  settings = { ...clone(DEFAULTS), palette: settings.palette, mode: settings.mode }; // appearance is kept
+  saveSettings();
   rows.forEach(r => r.refresh());
   applyAppearance();
   $('volume').value = settings.volume; $('vibrate').checked = settings.vibrate; $('auto').checked = settings.auto;
