@@ -13,15 +13,15 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Pomodoro</title>
 <style>
-:root{
-  --bg:#f3f6fb; --card:#ffffff; --text:#1a2230; --muted:#66758b; --track:#dde5f0; --line:#e6ecf4;
-  --focus:#2f66e0; --short:#14907a; --long:#6a58c9;
-  --accent:var(--focus);
-}
-@media (prefers-color-scheme:dark){
-  :root{ --bg:#0f141b; --card:#18202a; --text:#e8eef6; --muted:#8797ac; --track:#263140; --line:#212b38;
-    --focus:#4f80f0; --short:#25a58d; --long:#8573e0; }
-}
+:root{--accent:var(--focus)}
+/* Palettes. [data-palette] also matches the swatch buttons in Settings, so each previews its own colors. */
+:root,[data-palette="calm"]{ --bg:#f3f6fb; --card:#ffffff; --text:#1a2230; --muted:#66758b; --track:#dde5f0; --line:#e6ecf4; --focus:#2f66e0; --short:#14907a; --long:#6a58c9; }
+[data-palette="forest"]{ --bg:#f4f6f1; --card:#ffffff; --text:#1d261f; --muted:#68776b; --track:#dfe6dc; --line:#e7ece4; --focus:#2b7a4b; --short:#2f8f86; --long:#b07d3a; }
+[data-palette="tomato"]{ --bg:#fbf6f2; --card:#ffffff; --text:#2a2321; --muted:#7f746f; --track:#eadfd8; --line:#efe6e0; --focus:#e5533d; --short:#278a5c; --long:#3f72c9; }
+[data-scheme="dark"][data-palette="calm"],[data-scheme="dark"] [data-palette="calm"]{ --bg:#0f141b; --card:#18202a; --text:#e8eef6; --muted:#8797ac; --track:#263140; --line:#212b38; --focus:#4f80f0; --short:#25a58d; --long:#8573e0; }
+[data-scheme="dark"][data-palette="forest"],[data-scheme="dark"] [data-palette="forest"]{ --bg:#0e1511; --card:#17201a; --text:#e6efe8; --muted:#86998b; --track:#25322a; --line:#1f2b23; --focus:#3f9a64; --short:#3aa39c; --long:#c8934a; }
+[data-scheme="dark"][data-palette="tomato"],[data-scheme="dark"] [data-palette="tomato"]{ --bg:#141112; --card:#1f1b1c; --text:#f3ecea; --muted:#9a8f8b; --track:#2d2728; --line:#2a2425; --focus:#f0654f; --short:#36a173; --long:#5b8bde; }
+[data-scheme="dark"]{color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
 body{
@@ -100,6 +100,11 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 .switch input:checked{background:var(--accent)}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s;pointer-events:none}
 .switch:has(input:checked)::after{transform:translateX(20px)}
+.sheet .tabs{background:var(--track);box-shadow:none}
+.palettes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px;border-top:1px solid var(--line)}
+.swatch{background:var(--bg);border:2px solid transparent;border-radius:12px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--text);transition:border-color .2s}
+.swatch[aria-checked=true]{border-color:var(--accent)}
+.chips{display:flex;gap:5px}.chips i{width:14px;height:14px;border-radius:50%}
 .reset-defaults{display:block;margin:20px auto 0;color:var(--muted);text-decoration:underline;padding:8px}
 /* Short landscape (phones on their side): same centered stack, dial sized from the height left over */
 @media (orientation:landscape) and (max-height:560px){
@@ -154,6 +159,15 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 <section class="sheet" id="sheet" aria-label="Settings" aria-hidden="true" inert>
   <div class="sheet-head"><h2>Settings</h2><button class="done" id="closeSettings">Done</button></div>
 
+  <h3>Appearance</h3>
+  <div class="group">
+    <div class="row"><span class="name">Mode</span>
+      <div class="tabs" id="modeTabs" role="radiogroup" aria-label="Light or dark mode">
+        <button role="radio" data-mode="auto">Auto</button><button role="radio" data-mode="light">Light</button><button role="radio" data-mode="dark">Dark</button>
+      </div></div>
+    <div class="palettes" id="palettes" role="radiogroup" aria-label="Color palette"></div>
+  </div>
+
   <h3>Durations (minutes)</h3>
   <div class="group" id="durations"></div>
 
@@ -176,11 +190,13 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 /* ---------- Config ---------- */
 const DEFAULTS = {
   focus: 25, short: 5, long: 15, cycles: 4,
-  auto: false, volume: 0.7, vibrate: true,
+  auto: false, volume: 0.7, vibrate: true, palette: 'calm', mode: 'auto',
   sound: { focus: 'bell', short: 'chime', long: 'gong' },
 };
 const NAMES = { focus: 'Focus', short: 'Short break', long: 'Long break' };
 const LIMITS = { focus: [1, 180], short: [1, 60], long: [1, 90], cycles: [2, 12] };
+const PALETTES = { calm: 'Calm', forest: 'Forest', tomato: 'Tomato' };
+const MODES = ['auto', 'light', 'dark'];
 const SOUNDS = { bell: 'Bell', chime: 'Chime', gong: 'Gong', beep: 'Beep', alarm: 'Alarm clock', none: 'None' };
 
 /* ---------- Storage ---------- */
@@ -197,6 +213,8 @@ let settings = (() => {
     auto: typeof r.auto === 'boolean' ? r.auto : d.auto,
     vibrate: typeof r.vibrate === 'boolean' ? r.vibrate : d.vibrate,
     volume: Math.min(1, Math.max(0, Number.isFinite(+r.volume) && r.volume !== null ? +r.volume : d.volume)),
+    palette: Object.hasOwn(PALETTES, r.palette) ? r.palette : d.palette,
+    mode: MODES.includes(r.mode) ? r.mode : d.mode,
     sound: {},
   };
   for (const k of ['focus', 'short', 'long', 'cycles']) out[k] = num(r[k], ...LIMITS[k], d[k]);
@@ -204,6 +222,23 @@ let settings = (() => {
   return out;
 })();
 const saveSettings = () => store.set('pomo.settings', settings);
+
+/* ---------- Appearance ---------- */
+const root = document.documentElement, darkQuery = matchMedia('(prefers-color-scheme: dark)');
+function applyAppearance() {
+  // Auto follows the host's own light/dark switch when it has one (data-theme), else the OS.
+  const host = root.getAttribute('data-theme');
+  const dark = settings.mode === 'dark' || (settings.mode === 'auto' && (host ? host === 'dark' : darkQuery.matches));
+  root.dataset.scheme = dark ? 'dark' : 'light';
+  root.dataset.palette = settings.palette;
+  const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim();
+  const meta = document.querySelector('meta[name=theme-color]'); if (meta && bg) meta.content = bg;
+  document.querySelectorAll('#modeTabs button').forEach(b => b.setAttribute('aria-checked', b.dataset.mode === settings.mode));
+  document.querySelectorAll('#modeTabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === settings.mode));
+  document.querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-checked', b.dataset.palette === settings.palette));
+}
+darkQuery.addEventListener('change', applyAppearance);
+new MutationObserver(applyAppearance).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
 
 /* ---------- Timer state ---------- */
 // phase: focus|short|long; done: focus sessions finished this cycle;
@@ -387,6 +422,13 @@ function buildSettings() {
   vib.onchange = () => { settings.vibrate = vib.checked; saveSettings(); if (vib.checked && navigator.vibrate) navigator.vibrate(80); };
   auto.onchange = () => { settings.auto = auto.checked; saveSettings(); };
 }
+function buildAppearance() {
+  $('palettes').innerHTML = Object.entries(PALETTES).map(([k, v]) =>
+    `<button class="swatch" role="radio" data-palette="${k}"><span class="chips"><i style="background:var(--focus)"></i><i style="background:var(--short)"></i><i style="background:var(--long)"></i></span>${v}</button>`).join('');
+  $('palettes').onclick = e => { const b = e.target.closest('.swatch'); if (b) { settings.palette = b.dataset.palette; saveSettings(); applyAppearance(); } };
+  $('modeTabs').onclick = e => { const b = e.target.closest('button'); if (b) { settings.mode = b.dataset.mode; saveSettings(); applyAppearance(); } };
+}
+buildAppearance();
 buildSettings();
 let confirmTimer;
 $('defaults').onclick = () => {
@@ -399,6 +441,7 @@ $('defaults').onclick = () => {
   clearTimeout(confirmTimer); delete btn.dataset.armed; btn.textContent = 'Restore defaults';
   settings = clone(DEFAULTS); saveSettings();
   rows.forEach(r => r.refresh());
+  applyAppearance();
   $('volume').value = settings.volume; $('vibrate').checked = settings.vibrate; $('auto').checked = settings.auto;
   if (!running()) { st.remaining = dur(st.phase); saveState(); }
   render();
@@ -423,6 +466,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- Boot ---------- */
+applyAppearance();
 if (running()) { acquireLock(); }
 tick();
 if (wasExpired) flashHint(`${NAMES[st.phase]} timer ended while you were away`);
