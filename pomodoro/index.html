@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f3f6fb">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pomodoro">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,8 +40,9 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 
 header{display:flex;align-items:center;justify-content:space-between;padding:12px max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
 .tabs{display:flex;background:var(--card);border-radius:999px;padding:4px;gap:2px;box-shadow:0 1px 0 var(--line)}
-.tabs button{padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
-.tabs button[aria-selected=true],.tabs button[aria-checked=true]{background:var(--accent);color:#fff}
+.tabs button{white-space:nowrap;padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
+.tabs button[aria-checked=true]{background:var(--accent);color:#fff}
+#tabs button[aria-selected=true]{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
 .icon-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
 .icon-btn:active{background:var(--track)}
 .icon-btn svg{width:24px;height:24px}
@@ -57,18 +58,18 @@ main{--dial:min(78vw,52dvh,380px);flex:1;min-height:0;display:flex;flex-directio
 .label{font-size:clamp(12px,4.4cqmin,18px);font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px}
 .sub{font-size:clamp(11px,3.8cqmin,15px);color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
 /* Cycle timeline: one segment per window, width proportional to its length. Fills as time passes. */
-.cycle{--c:var(--focus);display:flex;gap:3px;width:calc(var(--dial)*.92);height:8px;flex:none;margin-top:-6px}
-.cycle i{--c:var(--focus);position:relative;flex:var(--w) 1 0;min-width:4px;border-radius:4px;background:color-mix(in srgb,var(--c) 20%,var(--track))}
+.cycle{display:flex;align-items:center;gap:3px;width:calc(var(--dial)*.92);height:10px;flex:none;margin-top:-6px}
+.cycle i{--c:var(--focus);position:relative;flex:var(--w) 1 0;min-width:4px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--c) 30%,var(--track));transition:height .3s}
 .cycle i.short{--c:var(--short)}.cycle i.long{--c:var(--long)}
-.cycle i.now{outline:1.5px solid var(--c);outline-offset:2px}
+.cycle i.now{height:10px;border-radius:5px}
 .cycle b{position:absolute;inset:0 auto 0 0;width:0;background:var(--c);border-radius:inherit;transition:width .3s linear}
 .cycle.draining b{transition:width .8s cubic-bezier(.4,0,.2,1)}
-.cycle i{transition:outline-color .3s}
 
 .controls{display:flex;align-items:center;gap:28px}
 .play{width:84px;height:84px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;
   box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 40%,transparent);transition:transform .1s,background .3s}
 .play:active{transform:scale(.94)}
+[data-scheme="dark"] .play{box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 22%,transparent)}
 .play svg{width:34px;height:34px}
 .side{width:52px;height:52px;border-radius:50%;background:var(--card);display:grid;place-items:center;color:var(--muted);box-shadow:0 1px 0 var(--line)}
 .side:active{transform:scale(.94)}
@@ -87,6 +88,7 @@ body.open .scrim{opacity:1;pointer-events:auto}
 body.open .sheet{transform:none}
 .sheet-head{position:sticky;top:0;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:14px 0 8px}
 .sheet-head h2{margin:0;font-size:20px}
+.sheet-head{transition:box-shadow .2s}.sheet-head.scrolled{box-shadow:0 1px 0 var(--line)}
 .done{color:var(--accent);font-weight:700;padding:8px 4px}
 h3{margin:18px 0 8px;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)}
 .group{background:var(--card);border-radius:14px;overflow:hidden}
@@ -115,12 +117,16 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 .reset-defaults{display:block;margin:20px auto 0;color:var(--muted);text-decoration:underline;padding:8px}
 /* Short landscape (phones on their side): same centered stack, dial sized from the height left over */
 @media (orientation:landscape) and (max-height:560px){
-  main{--dial:min(calc(100dvh - 214px),60vw,380px);gap:12px;padding-top:8px;padding-bottom:8px}
-  .hint{top:calc(54px + env(safe-area-inset-top));bottom:auto;padding:5px 14px;font-size:13px} /* keep the toast clear of the controls */
-  header{padding-top:8px}
-  .play{width:72px;height:72px}.play svg{width:30px;height:30px}
-  .controls{gap:24px}
+  main{--dial:min(calc(100dvh - 178px),60vw,380px);gap:10px;padding-top:4px;padding-bottom:6px}
+  .cycle{margin-top:-2px}
+  /* toast sits in the free space right of the dial, clear of the ring and controls */
+  .hint{top:50%;bottom:auto;left:auto;right:max(16px,env(safe-area-inset-right));transform:translateY(-50%);max-width:28vw;border-radius:14px;text-align:left;padding:8px 12px;font-size:13px}
+  header{padding-top:4px}
+  .play{width:64px;height:64px}.play svg{width:28px;height:28px}
+  .side{width:46px;height:46px}
+  .controls{gap:22px}
 }
+@media (max-width:360px){ .wide{display:none} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -139,8 +145,8 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 <header>
   <div class="tabs" role="tablist" aria-label="Timer mode" id="tabs">
     <button role="tab" data-phase="focus">Focus</button>
-    <button role="tab" data-phase="short">Short break</button>
-    <button role="tab" data-phase="long">Long break</button>
+    <button role="tab" data-phase="short">Short<span class="wide"> break</span></button>
+    <button role="tab" data-phase="long">Long<span class="wide"> break</span></button>
   </div>
   <button class="icon-btn" id="openSettings" aria-label="Settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
@@ -176,7 +182,7 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-label="Settings" aria-hidden="true" inert>
-  <div class="sheet-head"><h2>Settings</h2><button class="done" id="closeSettings">Done</button></div>
+  <div class="sheet-head" id="sheetHead"><h2>Settings</h2><button class="done" id="closeSettings">Done</button></div>
 
   <h3>Appearance</h3>
   <div class="group">
@@ -269,25 +275,26 @@ let st = (() => {
     endAt: Number.isFinite(+o.endAt) && o.endAt !== null ? +o.endAt : null,
   };
   delete out.full;
-  // A window that expired while the app was closed is settled silently:
-  // no sound hours after the fact; just show it ready to restart.
-  if (out.endAt !== null && out.endAt <= Date.now()) { out.endAt = null; out.remaining = full; out.expired = true; }
-  else if (out.endAt !== null && out.endAt - Date.now() > full) out.endAt = Date.now() + full; // clock skew / tampering
+  if (out.endAt !== null && out.endAt - Date.now() > full) out.endAt = Date.now() + full; // clock skew / tampering
   return out;
 })();
-const wasExpired = st.expired; delete st.expired;
 const saveState = () => store.set('pomo.state', st);
 const dur = p => settings[p] * 60000;
 const left = () => st.endAt ? Math.max(0, st.endAt - Date.now()) : st.remaining;
 const running = () => st.endAt !== null;
 
-function setPhase(p, autostart) {
+function enterPhase(p) { // state only, no side effects
   if (p === 'focus' && st.done >= settings.cycles) st.done = 0; // starting a fresh cycle
-  cycleHoldUntil = 0; // any phase change cancels a lingering timeline (complete() re-arms it)
   st.phase = p; st.remaining = dur(p); st.endAt = null;
+}
+function setPhase(p, autostart) {
+  enterPhase(p);
+  cycleHoldUntil = 0; // any phase change cancels a lingering timeline (complete() re-arms it)
   if (autostart) start(); else { releaseLock(); }
   saveState(); render();
 }
+// Leaving a window (finish, skip, catch-up): a focus window counts toward the cycle, and
+// leaving a long break always starts a fresh cycle, even if it was reached early.
 function start() {
   unlockAudio();
   st.endAt = Date.now() + st.remaining; saveState(); acquireLock(); render();
@@ -300,23 +307,43 @@ function nextAfter(p) {
   return 'focus';
 }
 function complete() {
-  const ended = st.phase;
-  if (ended === 'focus') st.done++;
+  const ended = st.phase, next = nextAfter(ended === 'focus' ? (st.done++, 'focus') : ended);
+  if (ended === 'long') st.done = 0;
   playSound(settings.sound[ended]);
-  advance(ended);
+  setPhase(next, settings.auto);
+  if (!settings.auto) flashHint(`${NAMES[ended]} done — ${NAMES[next].toLowerCase()} next`);
   // The timer rolls straight over; only the timeline lingers on the finished cycle, then drains.
   if (ended === 'long') { cycleHoldUntil = Date.now() + TIMELINE_HOLD_MS; render(); }
 }
-function advance(ended) {
-  const next = nextAfter(ended);
-  setPhase(next, settings.auto);
-  if (!settings.auto) flashHint(`${NAMES[ended]} complete — ready for ${NAMES[next].toLowerCase()}`);
+// The window ended while the app was closed or in the background: settle silently (no sound
+// hours late). With auto-start, replay the schedule from the real end time so the timer is
+// where it would have been; otherwise stop at the next window, ready to start.
+const GRACE_MS = 5000;
+function catchUp(grace) {
+  if (!running() || st.endAt > Date.now() - grace) return false;
+  const now = Date.now(), first = st.phase;
+  let endedAt = st.endAt, ended;
+  for (let guard = 0; guard < 1000; guard++) {
+    ended = st.phase;
+    const next = nextAfter(ended === 'focus' ? (st.done++, 'focus') : ended);
+    if (ended === 'long') st.done = 0;
+    enterPhase(next);
+    if (!settings.auto) break;
+    const end = endedAt + dur(next);
+    if (end > now) { st.endAt = end; break; }
+    endedAt = end;
+  }
+  saveState(); running() ? acquireLock() : releaseLock(); render();
+  flashHint(running() ? `Caught up while you were away — ${NAMES[st.phase].toLowerCase()} in progress`
+                      : `${NAMES[first]} ended while you were away — ${NAMES[st.phase].toLowerCase()} next`);
+  return true;
 }
 function skip() {
   // Next walks the normal progression (focus, short, focus, ... long after N focus windows),
   // so a skipped focus window advances the cycle just like a finished one.
-  if (st.phase === 'focus') st.done++;
-  setPhase(nextAfter(st.phase), false);
+  const from = st.phase, next = nextAfter(from === 'focus' ? (st.done++, 'focus') : from);
+  if (from === 'long') st.done = 0;
+  setPhase(next, false);
 }
 
 /* ---------- Render ---------- */
@@ -374,12 +401,12 @@ function renderCycle() {
   });
 }
 let hintTimer;
-function flashHint(msg) {
+function flashHint(msg, ms = 6000) { // ms = 0 keeps it up until replaced or cleared
   $('hint').textContent = msg; clearTimeout(hintTimer);
-  hintTimer = setTimeout(() => $('hint').textContent = '', 6000);
+  if (ms) hintTimer = setTimeout(() => $('hint').textContent = '', ms);
 }
 function tick() {
-  if (running() && left() <= 0) complete(); else render();
+  if (running() && left() <= 0) { if (!catchUp(GRACE_MS)) complete(); } else render();
 }
 setInterval(tick, 250);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); if (running()) acquireLock(); } });
@@ -400,12 +427,20 @@ function releaseLock() { try { wl && wl.release(); } catch {} wl = null; }
 
 /* ---------- Sounds (synthesized, no audio files) ---------- */
 let ctx = null;
+// iOS only lets audio start from a user gesture, so unlock on the first tap anywhere,
+// playing one silent sample to fully wake the audio session.
+const SOUND_HINT = 'Tap anywhere to turn on the timer sound';
 function unlockAudio() {
   try {
-    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createBufferSource(); src.buffer = ctx.createBuffer(1, 1, 22050); src.connect(ctx.destination); src.start(0);
+    }
     if (ctx.state !== 'running') ctx.resume();
+    if ($('hint').textContent === SOUND_HINT) $('hint').textContent = '';
   } catch {}
 }
+for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, unlockAudio, { capture: true, passive: true });
 function tone(out, { f, t = 0, d = 0.5, type = 'sine', g = 0.3, a = 0.005 }) {
   const o = ctx.createOscillator(), e = ctx.createGain(), t0 = ctx.currentTime + t;
   o.type = type; o.frequency.value = f;
@@ -490,21 +525,24 @@ $('defaults').onclick = () => {
     return;
   }
   clearTimeout(confirmTimer); delete btn.dataset.armed; btn.textContent = 'Reset timer & sound settings';
+  const wasUntouched = !running() && st.remaining === dur(st.phase);
   settings = { ...clone(DEFAULTS), palette: settings.palette, mode: settings.mode }; // appearance is kept
   saveSettings();
   rows.forEach(r => r.refresh());
   applyAppearance();
   $('volume').value = settings.volume; $('auto').checked = settings.auto;
-  if (!running()) { st.remaining = dur(st.phase); saveState(); }
+  if (wasUntouched) { st.remaining = dur(st.phase); saveState(); } // never discard progress in a paused window
   render();
 };
 function openSheet(o) {
   document.body.classList.toggle('open', o);
   $('sheet').inert = !o;
+  document.querySelector('header').inert = o; document.querySelector('main').inert = o;
   $('sheet').setAttribute('aria-hidden', !o);
   if (o) $('closeSettings').focus(); else $('openSettings').focus();
 }
 $('openSettings').onclick = () => openSheet(true);
+$('sheet').addEventListener('scroll', () => $('sheetHead').classList.toggle('scrolled', $('sheet').scrollTop > 4), { passive: true });
 $('closeSettings').onclick = $('scrim').onclick = () => openSheet(false);
 
 /* ---------- Controls ---------- */
@@ -514,14 +552,16 @@ $('skip').onclick = skip;
 $('tabs').onclick = e => { const b = e.target.closest('button'); if (b && b.dataset.phase !== st.phase) setPhase(b.dataset.phase, false); };
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && !document.body.classList.contains('open') && !/SELECT|INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); $('play').click(); }
-  if (e.key === 'Escape') openSheet(false);
+  if (e.key === 'Escape' && document.body.classList.contains('open')) openSheet(false);
 });
 
 /* ---------- Boot ---------- */
 applyAppearance();
-if (running()) { acquireLock(); }
+if (!catchUp(0) && running()) {   // restored a still-running timer
+  acquireLock();
+  flashHint(SOUND_HINT, 0);        // sound needs one tap after a reload (iOS)
+}
 tick();
-if (wasExpired) flashHint(`${NAMES[st.phase]} timer ended while you were away`);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
