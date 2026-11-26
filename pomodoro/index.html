@@ -45,8 +45,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .icon-btn:active{background:var(--track)}
 .icon-btn svg{width:24px;height:24px}
 
-main{--dial:min(78vw,50dvh,380px);flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:16px max(16px,env(safe-area-inset-right)) 16px max(16px,env(safe-area-inset-left))}
-.panel{display:flex;flex-direction:column;align-items:center;gap:22px}
+main{--dial:min(78vw,52dvh,380px);flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:16px max(16px,env(safe-area-inset-right)) 16px max(16px,env(safe-area-inset-left))}
 .dial{position:relative;width:var(--dial);aspect-ratio:1;flex:none;container-type:size}
 .dial svg{width:100%;height:100%;transform:rotate(-90deg)}
 .dial circle{fill:none;stroke-width:5;stroke-linecap:round}
@@ -55,7 +54,7 @@ main{--dial:min(78vw,50dvh,380px);flex:1;min-height:0;display:flex;flex-directio
 .readout{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .time{font-size:clamp(36px,23cqmin,96px);font-weight:300;letter-spacing:-1px;font-variant-numeric:tabular-nums}
 .label{font-size:clamp(12px,4.4cqmin,18px);font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px}
-.dots{display:flex;gap:8px;height:12px}
+.dots{display:flex;gap:7px;height:10px;margin-top:8px}
 .dots i{width:10px;height:10px;border-radius:50%;background:var(--track);transition:background .3s}
 .dots i.on{background:var(--accent)}
 
@@ -67,7 +66,10 @@ main{--dial:min(78vw,50dvh,380px);flex:1;min-height:0;display:flex;flex-directio
 .side{width:52px;height:52px;border-radius:50%;background:var(--card);display:grid;place-items:center;color:var(--muted);box-shadow:0 1px 0 var(--line)}
 .side:active{transform:scale(.94)}
 .side svg{width:24px;height:24px}
-.hint{min-height:20px;color:var(--muted);font-size:14px;text-align:center}
+.hint{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:calc(100% - 32px);
+  background:var(--card);color:var(--muted);font-size:14px;text-align:center;padding:8px 16px;border-radius:999px;
+  box-shadow:0 2px 12px rgba(0,0,0,.12);opacity:0;pointer-events:none;transition:opacity .25s;z-index:5}
+.hint:not(:empty){opacity:1}
 
 /* settings sheet */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
@@ -99,13 +101,13 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s;pointer-events:none}
 .switch:has(input:checked)::after{transform:translateX(20px)}
 .reset-defaults{display:block;margin:20px auto 0;color:var(--muted);text-decoration:underline;padding:8px}
-/* Short landscape (phones on their side): dial left, controls right, sized from the height available */
+/* Short landscape (phones on their side): same centered stack, dial sized from the height left over */
 @media (orientation:landscape) and (max-height:560px){
-  main{--dial:min(calc(100dvh - 120px),44vw,380px);flex-direction:row;gap:clamp(24px,8vw,72px)}
-  .panel{gap:16px}
+  main{--dial:min(calc(100dvh - 196px),60vw,380px);gap:12px;padding-top:8px;padding-bottom:8px}
+  .hint{top:calc(54px + env(safe-area-inset-top));bottom:auto;padding:5px 14px;font-size:13px} /* keep the toast clear of the controls */
   header{padding-top:8px}
   .play{width:72px;height:72px}.play svg{width:30px;height:30px}
-  .controls{gap:22px}
+  .controls{gap:24px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -131,10 +133,9 @@ input[type=range]{width:150px;accent-color:var(--accent)}
     <div class="readout">
       <div class="time" id="time" role="timer" aria-live="off">25:00</div>
       <div class="label" id="label">Focus</div>
+      <div class="dots" id="dots" aria-hidden="true"></div>
     </div>
   </div>
-  <div class="panel">
-  <div class="dots" id="dots" aria-hidden="true"></div>
   <div class="controls">
     <button class="side" id="reset" aria-label="Reset timer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
@@ -146,9 +147,8 @@ input[type=range]{width:150px;accent-color:var(--accent)}
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5v14l9-7zM17 5h2v14h-2z"/></svg>
     </button>
   </div>
-  <div class="hint" id="hint"></div>
-  </div>
 </main>
+<div class="hint" id="hint" role="status"></div>
 
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-label="Settings" aria-hidden="true" inert>
