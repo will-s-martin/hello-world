@@ -178,16 +178,42 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 const clone = o => JSON.parse(JSON.stringify(o));
+const num = (v, lo, hi, dflt) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : dflt; };
 let settings = (() => {
-  const s = store.get('pomo.settings') || {};
-  return { ...clone(DEFAULTS), ...s, sound: { ...DEFAULTS.sound, ...(s.sound || {}) } };
+  const s = store.get('pomo.settings'), r = (s && typeof s === 'object') ? s : {}, d = DEFAULTS;
+  const snd = (r.sound && typeof r.sound === 'object') ? r.sound : {};
+  const out = {
+    auto: typeof r.auto === 'boolean' ? r.auto : d.auto,
+    vibrate: typeof r.vibrate === 'boolean' ? r.vibrate : d.vibrate,
+    volume: Math.min(1, Math.max(0, Number.isFinite(+r.volume) && r.volume !== null ? +r.volume : d.volume)),
+    sound: {},
+  };
+  for (const k of ['focus', 'short', 'long', 'cycles']) out[k] = num(r[k], ...LIMITS[k], d[k]);
+  for (const k of ['focus', 'short', 'long']) out.sound[k] = Object.hasOwn(SOUNDS, snd[k]) ? snd[k] : d.sound[k];
+  return out;
 })();
 const saveSettings = () => store.set('pomo.settings', settings);
 
 /* ---------- Timer state ---------- */
 // phase: focus|short|long; done: focus sessions finished this cycle;
 // remaining: ms left while paused; endAt: epoch ms when running (else null)
-let st = Object.assign({ phase: 'focus', done: 0, remaining: settings.focus * 60000, endAt: null }, store.get('pomo.state') || {});
+let st = (() => {
+  const r = store.get('pomo.state'), o = (r && typeof r === 'object') ? r : {};
+  const phase = Object.hasOwn(NAMES, o.phase) ? o.phase : 'focus', full = settings[phase] * 60000;
+  const out = {
+    phase, full,
+    done: num(o.done, 0, settings.cycles, 0),
+    remaining: Number.isFinite(+o.remaining) && o.remaining !== null ? Math.min(full, Math.max(0, +o.remaining)) : full,
+    endAt: Number.isFinite(+o.endAt) && o.endAt !== null ? +o.endAt : null,
+  };
+  delete out.full;
+  // A window that expired while the app was closed is settled silently:
+  // no sound or vibration hours after the fact; just show it ready to restart.
+  if (out.endAt !== null && out.endAt <= Date.now()) { out.endAt = null; out.remaining = full; out.expired = true; }
+  else if (out.endAt !== null && out.endAt - Date.now() > full) out.endAt = Date.now() + full; // clock skew / tampering
+  return out;
+})();
+const wasExpired = st.expired; delete st.expired;
 const saveState = () => store.set('pomo.state', st);
 const dur = p => settings[p] * 60000;
 const left = () => st.endAt ? Math.max(0, st.endAt - Date.now()) : st.remaining;
@@ -376,6 +402,7 @@ document.addEventListener('keydown', e => {
 /* ---------- Boot ---------- */
 if (running()) { acquireLock(); }
 tick();
+if (wasExpired) flashHint(`${NAMES[st.phase]} timer ended while you were away`);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
