@@ -140,7 +140,7 @@ input[type=range]{width:150px;accent-color:var(--accent)}
 </main>
 
 <div class="scrim" id="scrim"></div>
-<section class="sheet" id="sheet" aria-label="Settings" aria-hidden="true">
+<section class="sheet" id="sheet" aria-label="Settings" aria-hidden="true" inert>
   <div class="sheet-head"><h2>Settings</h2><button class="done" id="closeSettings">Done</button></div>
 
   <h3>Durations (minutes)</h3>
@@ -220,6 +220,7 @@ const left = () => st.endAt ? Math.max(0, st.endAt - Date.now()) : st.remaining;
 const running = () => st.endAt !== null;
 
 function setPhase(p, autostart) {
+  if (p === 'focus' && st.done >= settings.cycles) st.done = 0; // starting a fresh cycle
   st.phase = p; st.remaining = dur(p); st.endAt = null;
   if (autostart) start(); else { releaseLock(); }
   saveState(); render();
@@ -241,14 +242,11 @@ function complete() {
   playSound(settings.sound[ended]);
   if (settings.vibrate && navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
   const next = nextAfter(ended);
-  if (ended === 'long') st.done = 0;
   setPhase(next, settings.auto);
   if (!settings.auto) flashHint(`${NAMES[ended]} complete — ready for ${NAMES[next].toLowerCase()}`);
 }
 function skip() {
-  const ended = st.phase;
-  if (ended === 'long') st.done = 0;
-  setPhase(ended === 'focus' ? (st.done >= settings.cycles ? 'long' : 'short') : 'focus', false);
+  setPhase(nextAfter(st.phase), false); // skipping a focus window doesn't count it
 }
 
 /* ---------- Render ---------- */
@@ -263,8 +261,9 @@ function fmt(ms) {
 function render() {
   document.body.dataset.phase = st.phase;
   const t = fmt(left());
-  if (t !== lastShown) { $('time').textContent = t; lastShown = t; document.title = `${t} · ${NAMES[st.phase]}`; }
-  bar.style.strokeDashoffset = C * (1 - left() / dur(st.phase));
+  const key = t + st.phase;
+  if (key !== lastShown) { $('time').textContent = t; lastShown = key; document.title = `${t} · ${NAMES[st.phase]}`; }
+  bar.style.strokeDashoffset = C * (1 - Math.min(1, Math.max(0, left() / dur(st.phase))));
   $('label').textContent = NAMES[st.phase];
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.phase === st.phase));
   $('playIcon').innerHTML = running() ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
@@ -285,14 +284,16 @@ setInterval(tick, 250);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); if (running()) acquireLock(); } });
 
 /* ---------- Wake lock (keeps screen on while running) ---------- */
-let wl = null;
+let wl = null, wlPending = false;
 async function acquireLock() {
+  if (!('wakeLock' in navigator) || wl || wlPending || document.hidden) return;
+  wlPending = true;
   try {
-    if ('wakeLock' in navigator && !wl && !document.hidden) {
-      wl = await navigator.wakeLock.request('screen');
-      wl.addEventListener('release', () => { wl = null; });
-    }
-  } catch {}
+    const l = await navigator.wakeLock.request('screen');
+    wlPending = false;
+    if (!running()) { l.release(); return; } // paused/reset while the request was in flight
+    wl = l; l.addEventListener('release', () => { if (wl === l) wl = null; });
+  } catch { wlPending = false; }
 }
 function releaseLock() { try { wl && wl.release(); } catch {} wl = null; }
 
@@ -383,6 +384,7 @@ $('defaults').onclick = () => {
 };
 function openSheet(o) {
   document.body.classList.toggle('open', o);
+  $('sheet').inert = !o;
   $('sheet').setAttribute('aria-hidden', !o);
   if (o) $('closeSettings').focus(); else $('openSettings').focus();
 }
@@ -395,7 +397,7 @@ $('reset').onclick = () => { st.remaining = dur(st.phase); st.endAt = null; rele
 $('skip').onclick = skip;
 $('tabs').onclick = e => { const b = e.target.closest('button'); if (b && b.dataset.phase !== st.phase) setPhase(b.dataset.phase, false); };
 document.addEventListener('keydown', e => {
-  if (e.code === 'Space' && !/SELECT|INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); $('play').click(); }
+  if (e.code === 'Space' && !document.body.classList.contains('open') && !/SELECT|INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); $('play').click(); }
   if (e.key === 'Escape') openSheet(false);
 });
 
