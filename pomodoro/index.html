@@ -374,8 +374,15 @@ function buildSettings() {
   auto.onchange = () => { settings.auto = auto.checked; saveSettings(); };
 }
 buildSettings();
+let confirmTimer;
 $('defaults').onclick = () => {
-  if (!confirm('Restore all settings to their defaults?')) return;
+  const btn = $('defaults');
+  if (!btn.dataset.armed) { // two taps to confirm (confirm() is blocked in some viewers)
+    btn.dataset.armed = '1'; btn.textContent = 'Tap again to restore defaults';
+    confirmTimer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Restore defaults'; }, 4000);
+    return;
+  }
+  clearTimeout(confirmTimer); delete btn.dataset.armed; btn.textContent = 'Restore defaults';
   settings = clone(DEFAULTS); saveSettings();
   rows.forEach(r => r.refresh());
   $('volume').value = settings.volume; $('vibrate').checked = settings.vibrate; $('auto').checked = settings.auto;
